@@ -1,7 +1,7 @@
-# type in capture command window "source [file normalize {A:\Heap\Pin2Part.tcl}]"
+# type in capture command window "source [file normalize {D:\pin2part\Pin2Part.tcl}]"
 
 set lNullObj NULL
-set LogFileName 			[file normalize {A:\Heap\Pin2Part.log}]
+set LogFileName 			[file normalize {D:\pin2part\Pin2Part.log}]
 set LogFile      			[open $LogFileName w+]
 
 set AlteraPinFileName 	[file normalize {A:\Heap\ROIC\output_files\ROICx11.pin}]
@@ -13,6 +13,7 @@ proc NetNameUni {pNetName} {
 	if { [expr {($pNetName eq "GXB_GND*") || ($pNetName eq "GND+")}] } {
 		return "GND"
 	} elseif { [expr {
+		  ($pNetName eq "") ||
 		  ($pNetName eq "DNU") ||
 		  ($pNetName eq "RESERVED_INPUT_WITH_WEAK_PULLUP") ||
 		  ($pNetName eq "GXB_NC")  ||
@@ -23,10 +24,11 @@ proc NetNameUni {pNetName} {
 		  ($pNetName eq "VCCLSENSE")}] } {
 		return "NC"
 	} else {
-		regsub -all {\(n\)} $pNetName {n} uni_net
-		#regsub -all {\.} $uni_net {_} uni_net
+		regsub -all {\.} $pNetName {_} uni_net
 		regsub -all {\[} $uni_net {} uni_net
 		regsub -all {\]} $uni_net {} uni_net
+		set uni_net [string toupper $uni_net]
+		regsub -all {\(N\)} $uni_net {n} uni_net
 		return $uni_net
 	}
 }
@@ -42,8 +44,8 @@ proc GetAlteraNet { Netlist PinNumber } {
 	}
 }
 
-proc AddNetToPin {pSchematicNameStr pPageNameStr pPin pAlias lStatus} {
-	set WireLength 12
+proc AddNetToPin {pPin pAlias lStatus} {
+	set lWireLength 12
 	# dependet of Page Grid Refrence
 	set UnitFactor 0.12
 	
@@ -60,44 +62,35 @@ proc AddNetToPin {pSchematicNameStr pPageNameStr pPin pAlias lStatus} {
 	#puts "HotSpotPointY: $lHotSpotPointX , $lHotSpotPointY"
 
 	#Направление линии
-	set offsetX 0
+    set offsetX 0
 
-	if {$lHotSpotPointX > $lStartPointX} {
-		set offsetX $WireLength
-	} elseif {$lHotSpotPointX < $lStartPointX} {
-		set offsetX [expr -$WireLength]
-	}
+    if {$lHotSpotPointX > $lStartPointX} {
+        set offsetX $lWireLength
+    } elseif {$lHotSpotPointX < $lStartPointX} {
+        set offsetX [expr -$lWireLength]
+    }
 
-	#open page for drawing
-	OPage $pSchematicNameStr $pPageNameStr
-	ZoomAll
-	PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX+$offsetX] $lHotSpotPointY
-	PlaceNetAlias [expr $lHotSpotPointX + $offsetX/2 - $WireLength/3] $lHotSpotPointY $pAlias
+    PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX+$offsetX] $lHotSpotPointY
+    PlaceNetAlias [expr $lHotSpotPointX+$offsetX/2 - $lWireLength/6] $lHotSpotPointY $pAlias
 }
 
-proc ModifyNetOfPin {pSchematicNameStr pPageNameStr pPin pWire pAlteraNet pStatus} {
+proc ModifyNetOfPin {pPin pWire pAlteraNet pStatus} {
 	set lAliasIter [$pWire NewAliasesIter $pStatus]
 	#get the first alias of wire
 	set lAlias [$lAliasIter NextAlias $pStatus]
 	set lNullObj NULL
-	set IsAlias FALSE
-	while { $lAlias!=$lNullObj} {
+	if { $lAlias==$lNullObj} {
+		set lState [$pWire SetColor 4]
+	} else {
 		set pReplacedAliasCStr [DboTclHelper_sMakeCString $pAlteraNet]
 		set pStatus [$lAlias SetName $pReplacedAliasCStr]
-		set IsAlias TRUE
 		#get the next alias of wire
-		set lAlias [$lAliasIter NextAlias $pStatus]
+		#set lAlias [$lAliasIter NextAlias $pStatus]
 	}
 	delete_DboWireAliasesIter $lAliasIter
-	
-	if { !$IsAlias} {
-		set lState [$pWire SetColor 4]
-	}
 }
 
-proc DeleteNetOfPin {pSchematicNameStr pPageNameStr pWire pStatus} {
-	OPage $pSchematicNameStr $pPageNameStr
-	ZoomAll
+proc DeleteNetOfPin {pWire pStatus} {
 	set ID [$pWire GetId $pStatus]
 	SelectObjectById $ID
 	Delete
@@ -127,6 +120,7 @@ puts $lDesignNameStr
 set lSchematicName [DboTclHelper_sMakeCString]
 set lPageName [DboTclHelper_sMakeCString]
 set lValue [DboTclHelper_sMakeCString]
+set lPartReference [DboTclHelper_sMakeCString]
 set lPinNumber [DboTclHelper_sMakeCString]
 set lNetName [DboTclHelper_sMakeCString]	
 
@@ -147,6 +141,7 @@ while { $lView != $lNullObj} {
 	while {$lPage!=$lNullObj} {
 		set lStatus [$lPage GetName $lPageName]
 		set lPageNameStr [DboTclHelper_sGetConstCharPtr $lPageName]
+		set IsOpenPage FALSE
 		puts $LogFile $lPageNameStr
 		puts $lPageNameStr
 		set lPartInstsIter [$lPage NewPartInstsIter $lStatus]
@@ -157,20 +152,21 @@ while { $lView != $lNullObj} {
 			set lPlacedInst [DboPartInstToDboPlacedInst $lInst]
 			if {$lPlacedInst != $lNullObj} {
 				$lPlacedInst GetPartValue $lValue
+				$lPlacedInst GetReferenceDesignator $lPartReference
 				set PartValueStr [DboTclHelper_sGetConstCharPtr $lValue]
+				set lPartReferenceStr [DboTclHelper_sGetConstCharPtr $lPartReference]
 				if {$PartValueStr eq "10CL016YF484C6G"} {
+					puts "$PartValueStr	$lPartReferenceStr"
+					puts $LogFile "$PartValueStr	$lPartReferenceStr"
 					set lIter [$lPlacedInst NewPinsIter $lStatus]
 					#get the first pin of the part
 					set lPin [$lIter NextPin $lStatus]
 					# iterate of all pins
-					#set nPin 0
 					while {$lPin != $lNullObj } {
-						#set nPin [expr $nPin + 1]
 						set lStatus [$lPin GetPinNumber $lPinNumber]
 						set lPinNumberStr [DboTclHelper_sGetConstCharPtr $lPinNumber]
 						set pAlteraNet [GetAlteraNet $SplitNetlist $lPinNumberStr]
 						set lNet [$lPin GetNet $lStatus]
-						puts $lPinNumberStr
 						if {$lNet != $lNullObj } {
 							set lStatus [$lNet GetNetName $lNetName]
 							set lNetNameStr [DboTclHelper_sGetConstCharPtr $lNetName]
@@ -179,20 +175,24 @@ while { $lView != $lNullObj} {
 								if {$lWire != $lNullObj } {
 									if { $pAlteraNet eq "NC"} {
 										# delete wire
-										puts $LogFile [concat $lPinNumberStr " " $lNetNameStr " delete "]
-										close $LogFile
 										puts [concat $lPinNumberStr " " $lNetNameStr " delete "]
-										DeleteNetOfPin $lSchematicNameStr $lPageNameStr $lWire $lStatus
+										if {!$IsOpenPage} {
+											OPage $lSchematicNameStr $lPageNameStr
+											set IsOpenPage TRUE
+										}
+										puts $LogFile [concat $lPinNumberStr " " $lNetNameStr " delete "]
+										#close $LogFile									
+										DeleteNetOfPin $lWire $lStatus
 										set lStatus  [$lPage MarkModified]
-										set LogFile  [open $LogFileName a+]
+										#set LogFile  [open $LogFileName a+]
 									} else {
 										#rename net
 										puts $LogFile [concat $lPinNumberStr " " $pAlteraNet " " $lNetNameStr " reuse" ]
-										close $LogFile
+										#close $LogFile
 										puts [concat $lPinNumberStr " " $pAlteraNet " " $lNetNameStr " reuse" ]
-										ModifyNetOfPin $lSchematicNameStr $lPageNameStr $lPin $lWire $pAlteraNet $lStatus
+										ModifyNetOfPin $lPin $lWire $pAlteraNet $lStatus
 										set lStatus  [$lPage MarkModified]
-										set LogFile  [open $LogFileName a+]
+										#set LogFile  [open $LogFileName a+]
 									}
 								}
 							} else {
@@ -201,19 +201,27 @@ while { $lView != $lNullObj} {
 							}
 						} elseif {$pAlteraNet ne "NC"} {
 							# add wire & net
-							puts $LogFile [concat $lPinNumberStr " " $pAlteraNet " add " ]
-							close $LogFile
 							puts [concat $lPinNumberStr " " $pAlteraNet " add " ]
-							AddNetToPin $lSchematicNameStr $lPageNameStr $lPin $pAlteraNet $lStatus
+							if {!$IsOpenPage} {
+								OPage $lSchematicNameStr $lPageNameStr
+								set IsOpenPage TRUE
+							}
+							puts $LogFile [concat $lPinNumberStr " " $pAlteraNet " add " ]
+							#close $LogFile							
+							AddNetToPin $lPin $pAlteraNet $lStatus
 							set lStatus  [$lPage MarkModified]
-							set LogFile  [open $LogFileName a+]
+							# catch {DboTclHelper_sEvalPage $lPage}
+							# catch {ZoomRedraw}							
+							#set LogFile  [open $LogFileName a+]
+						} else {
+							puts "$lPinNumberStr NC"
 						}
-						puts "$lPinNumberStr NC"
 						#get the next pin of the part
 						set lPin [$lIter NextPin $lStatus]						
 					}
 					delete_DboPartInstPinsIter $lIter
 				}
+				set PartValueStr $lNullObj
 			}
 			set lInst [$lPartInstsIter NextPartInst $lStatus]
 		}
