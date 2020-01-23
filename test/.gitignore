@@ -1,0 +1,11 @@
+*.DBK
+*.DSNlck
+*.flow.rpt
+*.map.rpt
+*.map.summary
+*.opj
+*.qws
+db/
+output_files/
+incremental_db/
+*_dump.txt
