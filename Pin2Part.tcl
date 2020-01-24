@@ -4,7 +4,7 @@ set lNullObj NULL
 set LogFileName 			[file normalize {D:\pin2part\Pin2Part.log}]
 set LogFile      			[open $LogFileName w+]
 
-set AlteraPinFileName 	[file normalize {A:\Heap\ROIC\output_files\ROICx11.pin}]
+set AlteraPinFileName 	[file normalize {D:\ImWork\FPGA\xd_readout\output_files\xd_readout.pin}]
 set AllteraPinFile      [open $AlteraPinFileName r]
 set AlteraNetlist    	[read $AllteraPinFile ]
 set SplitNetlist  		[split $AlteraNetlist "\n"]
@@ -24,12 +24,15 @@ proc NetNameUni {pNetName} {
 		  ($pNetName eq "VCCLSENSE")}] } {
 		return "NC"
 	} else {
-		regsub -all {\.} $pNetName {_} uni_net
-		regsub -all {\[} $uni_net {} uni_net
-		regsub -all {\]} $uni_net {} uni_net
-		set uni_net [string toupper $uni_net]
-		regsub -all {\(N\)} $uni_net {n} uni_net
-		return $uni_net
+		regsub {\[} $pNetName {} pNetName
+		regsub {\]} $pNetName {} pNetName
+		set result [regexp {\(n\)+} $pNetName match]
+		if {$result != 0} {
+			regsub {\(n\)} $pNetName {} pNetName
+			regsub {p} $pNetName {n} pNetName
+		}
+		set pNetName [string toupper $pNetName]
+		return $pNetName
 	}
 }
 
