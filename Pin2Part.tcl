@@ -9,7 +9,7 @@ set AllteraPinFile      [open $AlteraPinFileName r]
 set AlteraNetlist    	[read $AllteraPinFile ]
 set SplitNetlist  		[split $AlteraNetlist "\n"]
 
-proc NetNameUni {pNetName} {
+proc NetNameUni {pNetName pStandard} {
 	if { [expr {($pNetName eq "GXB_GND*") || ($pNetName eq "GND+")}] } {
 		return "GND"
 	} elseif { [expr {
@@ -24,16 +24,31 @@ proc NetNameUni {pNetName} {
 		  ($pNetName eq "VCCLSENSE")}] } {
 		return "NC"
 	} else {
-		regsub {\[} $pNetName {} pNetName
-		regsub {\]} $pNetName {} pNetName
-		set result [regexp {\(n\)+} $pNetName match]
-		if {$result != 0} {
-			regsub {\(n\)} $pNetName {} pNetName
-			regsub {p} $pNetName {n} pNetName
-		}
 		set pNetName [string toupper $pNetName]
-		return $pNetName
+		if {$pStandard eq "LVDS"} {
+			set Negativ [regexp {\(N\)+} $pNetName match]
+			regsub {\(N\)} $pNetName {} pNetName
+			if {$Negativ} {
+				set Polarity "n"
+			} else {
+				set Polarity "p"
+			}
+			
+			set IsVector [regexp {\[+} $pNetName match]
+			if {$IsVector!=0} {
+				regsub {\]} $pNetName {} pNetName
+				set pos [string first "\[" $pNetName]
+				set pNetName [string replace $pNetName $pos $pos $Polarity]
+			} else {
+				set pNetName [concat $pNetName $Polarity]
+			}
+		} else {
+			regsub {\]} $pNetName {} pNetName
+			regsub {\[} $pNetName {} pNetName
+		}
 	}
+
+	return $pNetName
 }
 
 proc GetAlteraNet { Netlist PinNumber } {
@@ -42,7 +57,8 @@ proc GetAlteraNet { Netlist PinNumber } {
 		set current_pin [string trim [lindex $split_quartus_string 1]]
 		if {$current_pin eq $PinNumber} {
 			set current_net [string trim [lindex $split_quartus_string 0]]
-			return [NetNameUni $current_net]
+			set current_standard [string trim [lindex $split_quartus_string 3]]
+			return [NetNameUni $current_net $current_standard]
 		}
 	}
 }
@@ -144,7 +160,6 @@ while { $lView != $lNullObj} {
 	while {$lPage!=$lNullObj} {
 		set lStatus [$lPage GetName $lPageName]
 		set lPageNameStr [DboTclHelper_sGetConstCharPtr $lPageName]
-		set IsOpenPage FALSE
 		puts $LogFile $lPageNameStr
 		puts $lPageNameStr
 		set lPartInstsIter [$lPage NewPartInstsIter $lStatus]
@@ -161,6 +176,7 @@ while { $lView != $lNullObj} {
 				if {$PartValueStr eq "10CL016YF484C6G"} {
 					puts "$PartValueStr	$lPartReferenceStr"
 					puts $LogFile "$PartValueStr	$lPartReferenceStr"
+					OPage $lSchematicNameStr $lPageNameStr
 					set lIter [$lPlacedInst NewPinsIter $lStatus]
 					#get the first pin of the part
 					set lPin [$lIter NextPin $lStatus]
@@ -178,24 +194,15 @@ while { $lView != $lNullObj} {
 								if {$lWire != $lNullObj } {
 									if { $pAlteraNet eq "NC"} {
 										# delete wire
-										puts [concat $lPinNumberStr " " $lNetNameStr " delete "]
-										if {!$IsOpenPage} {
-											OPage $lSchematicNameStr $lPageNameStr
-											set IsOpenPage TRUE
-										}
-										puts $LogFile [concat $lPinNumberStr " " $lNetNameStr " delete "]
-										#close $LogFile									
+										puts "$lPinNumberStr $lNetNameStr delete"
+										puts $LogFile "$lPinNumberStr $lNetNameStr delete"
 										DeleteNetOfPin $lWire $lStatus
-										set lStatus  [$lPage MarkModified]
-										#set LogFile  [open $LogFileName a+]
 									} else {
 										#rename net
-										puts $LogFile [concat $lPinNumberStr " " $pAlteraNet " " $lNetNameStr " reuse" ]
+										puts $LogFile "$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
 										#close $LogFile
-										puts [concat $lPinNumberStr " " $pAlteraNet " " $lNetNameStr " reuse" ]
+										puts "$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
 										ModifyNetOfPin $lPin $lWire $pAlteraNet $lStatus
-										set lStatus  [$lPage MarkModified]
-										#set LogFile  [open $LogFileName a+]
 									}
 								}
 							} else {
@@ -204,18 +211,9 @@ while { $lView != $lNullObj} {
 							}
 						} elseif {$pAlteraNet ne "NC"} {
 							# add wire & net
-							puts [concat $lPinNumberStr " " $pAlteraNet " add " ]
-							if {!$IsOpenPage} {
-								OPage $lSchematicNameStr $lPageNameStr
-								set IsOpenPage TRUE
-							}
-							puts $LogFile [concat $lPinNumberStr " " $pAlteraNet " add " ]
-							#close $LogFile							
+							puts "$lPinNumberStr $pAlteraNet add"
+							puts $LogFile "$lPinNumberStr $pAlteraNet add"
 							AddNetToPin $lPin $pAlteraNet $lStatus
-							set lStatus  [$lPage MarkModified]
-							# catch {DboTclHelper_sEvalPage $lPage}
-							# catch {ZoomRedraw}							
-							#set LogFile  [open $LogFileName a+]
 						} else {
 							puts "$lPinNumberStr NC"
 						}
@@ -224,8 +222,9 @@ while { $lView != $lNullObj} {
 					}
 					delete_DboPartInstPinsIter $lIter
 				}
-				set PartValueStr $lNullObj
 			}
+			#puts $lPartInstsIter
+			puts $LogFile "$lPartInstsIter"
 			set lInst [$lPartInstsIter NextPartInst $lStatus]
 		}
 		delete_DboPagePartInstsIter $lPartInstsIter
