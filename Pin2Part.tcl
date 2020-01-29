@@ -6,7 +6,7 @@ set lStatus [DboState]
 set LogFileName 			[file normalize {D:\pin2part\Pin2Part.log}]
 set LogFile      			[open $LogFileName w+]
 
-set AlteraPinFileName 	[file normalize {D:\ImWork\FPGA\xd_main\output_files\xd_main.pin}]
+set AlteraPinFileName 	[file normalize {D:\ImWork\FPGA\xd_readout\output_files\xd_readout.pin}]
 set AllteraPinFile      [open $AlteraPinFileName r]
 set AlteraNetlist    	[read $AllteraPinFile ]
 set SplitNetlist  		[split $AlteraNetlist "\n"]
@@ -82,7 +82,8 @@ proc GetAlteraNet { Netlist PinNumber } {
 	}
 }
 
-proc AddNetToPin {pPin pAlias lStatus} {
+proc AddNetToPin {pPin pAlias} {
+	set lStatus [DboState]
 	set lWireLength 12
 	# dependet of Page Grid Refrence
 	set UnitFactor 0.12
@@ -99,40 +100,43 @@ proc AddNetToPin {pPin pAlias lStatus} {
 	set lHotSpotPointY [expr [DboTclHelper_sGetCPointY $lHotSpotPoint]* $UnitFactor]
 	#puts "HotSpotPointY: $lHotSpotPointX , $lHotSpotPointY"
 
+	$lStatus -delete
     if {$lHotSpotPointX > $lStartPointX} {
 		PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX+$lWireLength] $lHotSpotPointY
-		PlaceNetAlias [expr $lHotSpotPointX+3] $lHotSpotPointY $pAlias	
+		PlaceNetAlias [expr $lHotSpotPointX+3] $lHotSpotPointY $pAlias
     } elseif {$lHotSpotPointX < $lStartPointX} {
         PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX-$lWireLength] $lHotSpotPointY
-		PlaceNetAlias [expr $lHotSpotPointX-$lWireLength+1] $lHotSpotPointY $pAlias	
-    } else {
-		return
-	}
+		PlaceNetAlias [expr $lHotSpotPointX-$lWireLength+1] $lHotSpotPointY $pAlias
+    }
 }
 
-proc ModifyNetOfPin {pPin pWire pAlteraNet pStatus} {
-	set lAliasIter [$pWire NewAliasesIter $pStatus]
+proc ModifyNetOfPin {pPin pWire pAlteraNet} {
+	set lStatus [DboState]
+	set lAliasIter [$pWire NewAliasesIter $lStatus]
 	#get the first alias of wire
-	set lAlias [$lAliasIter NextAlias $pStatus]
+	set lAlias [$lAliasIter NextAlias $lStatus]
 	set lNullObj NULL
 	if { $lAlias==$lNullObj} {
 		set lState [$pWire SetColor 4]
 	} else {
 		while {$lAlias!=$lNullObj} {
 			set pReplacedAliasCStr [DboTclHelper_sMakeCString $pAlteraNet]
-			set pStatus [$lAlias SetName $pReplacedAliasCStr]
+			set lStatus [$lAlias SetName $pReplacedAliasCStr]
 			#get the next alias of wire
-			set lAlias [$lAliasIter NextAlias $pStatus]
+			set lAlias [$lAliasIter NextAlias $lStatus]
 		}
 	}
 	delete_DboWireAliasesIter $lAliasIter
+	$lStatus -delete
 }
 
-proc DeleteNetOfPin {pWire pStatus} {
+proc DeleteNetOfPin {pWire} {
+	set lStatus [DboState]
 	UnSelectAll
-	set ID [$pWire GetId $pStatus]
+	set ID [$pWire GetId $lStatus]
 	SelectObjectById $ID
 	Delete
+	$lStatus -delete
 }
 
 set lSession $::DboSession_s_pDboSession
@@ -205,15 +209,14 @@ while { $lView != $lNullObj} {
 								if {$lWire != $lNullObj } {
 									if { $pAlteraNet eq "NC"} {
 										# delete wire
+										DeleteNetOfPin $lWire
 										puts "$lPinNumberStr $lNetNameStr delete"
-										puts $LogFile "$lPinNumberStr $lNetNameStr delete"
-										DeleteNetOfPin $lWire $lStatus
+										puts $LogFile "$lPinNumberStr $lNetNameStr delete"										
 									} else {
 										#rename net
+										ModifyNetOfPin $lPin $lWire $pAlteraNet
 										puts $LogFile "$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
-										#close $LogFile
-										puts "$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
-										ModifyNetOfPin $lPin $lWire $pAlteraNet $lStatus
+										puts "$lPinNumberStr $pAlteraNet $lNetNameStr reuse"										
 									}
 								}
 							} else {
@@ -222,9 +225,9 @@ while { $lView != $lNullObj} {
 							}
 						} elseif {$pAlteraNet ne "NC"} {
 							# add wire & net
+							AddNetToPin $lPin $pAlteraNet
 							puts "$lPinNumberStr $pAlteraNet add"
 							puts $LogFile "$lPinNumberStr $pAlteraNet add"
-							AddNetToPin $lPin $pAlteraNet $lStatus
 						} else {
 							puts "$lPinNumberStr NC"
 						}
