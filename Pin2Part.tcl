@@ -26,8 +26,8 @@ proc GetAlteraPart { Netlist } {
 set AlteraPart [GetAlteraPart  $SplitNetlist]
 
 proc NetNameUni {pNetName pStandard} {
-	regsub -all -- {\.} $pNetName {_} pNetName
-	if { [expr {($pNetName eq "GXB_GND*") || ($pNetName eq "GND+")}] } {
+	#regsub -all -- {\.} $pNetName {_} pNetName
+	if { [expr {($pNetName eq "GXB_GND*") || ($pNetName eq "GND+")} || [regexp {GNDA+} $pNetName match]] } {
 		return "GND"
 	} elseif { [expr {
 		  ($pNetName eq "") ||
@@ -40,32 +40,31 @@ proc NetNameUni {pNetName pStandard} {
 		  ($pNetName eq "GNDSENSE") ||
 		  ($pNetName eq "VCCLSENSE")}] } {
 		return "NC"
+	} elseif {[expr {($pStandard eq "LVDS") || ($pStandard eq "High Speed Differential I/O")}]} {
+		set Negativ [regexp {\(n\)+} $pNetName match]
+		regsub -all -- {\(n\)} $pNetName {} pNetName
+		if {$Negativ} {
+			set Polarity "n"
+		} else {
+			set Polarity "p"
+		}
+		
+		set IsVector [regexp {\[+} $pNetName match]
+		regsub -all -- {\]} $pNetName {} pNetName
+		set pNetName [string toupper $pNetName]
+		if {$IsVector!=0} {
+			set pos [string last "\[" $pNetName]
+			set pNetName [string replace $pNetName $pos $pos $Polarity]
+		} else {
+			set pNetName "$pNetName$Polarity"
+		}
 	} else {
 		set pNetName [string toupper $pNetName]
-		if {[expr {($pStandard eq "LVDS") || ($pStandard eq "High Speed Differential I/O")}]} {
-			set Negativ [regexp {\(N\)+} $pNetName match]
-			regsub -all -- {\(N\)} $pNetName {} pNetName
-			if {$Negativ} {
-				set Polarity "n"
-			} else {
-				set Polarity "p"
-			}
-			
-			set IsVector [regexp {\[+} $pNetName match]
-			if {$IsVector!=0} {
-				regsub -all -- {\]} $pNetName {} pNetName
-				set pos [string last "\[" $pNetName]
-				set pNetName [string replace $pNetName $pos $pos $Polarity]
-			} else {
-				set pNetName "$pNetName$Polarity"
-			}
-		}
-
+		regsub -all -- {\]} $pNetName {} pNetName
+		regsub -all -- {\[} $pNetName {} pNetName		
+		regsub -all -- {\)} $pNetName {} pNetName
+		regsub -all -- {\(} $pNetName {} pNetName
 	}
-	regsub -all -- {\]} $pNetName {} pNetName
-	regsub -all -- {\[} $pNetName {} pNetName		
-	regsub -all -- {\)} $pNetName {} pNetName
-	regsub -all -- {\(} $pNetName {} pNetName
 
 	return $pNetName
 }
@@ -204,7 +203,7 @@ while { $lView != $lNullObj} {
 							set lNetName [DboTclHelper_sMakeCString]	
 							set lStatus [$lNet GetNetName $lNetName]
 							set lNetNameStr [DboTclHelper_sGetConstCharPtr $lNetName]
-							if {$lNetNameStr ne [string toupper $pAlteraNet]} {
+							if {$pAlteraNet ne $lNetNameStr} {
 								set lWire [$lPin GetWire $lStatus]
 								if {$lWire != $lNullObj } {
 									if { $pAlteraNet eq "NC"} {
@@ -215,6 +214,7 @@ while { $lView != $lNullObj} {
 									} else {
 										#rename net
 										ModifyNetOfPin $lPin $lWire $pAlteraNet
+										set lStatus [$lNet SetName $pAlteraNet]
 										puts $LogFile "$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
 										puts "$lPinNumberStr $pAlteraNet $lNetNameStr reuse"										
 									}
