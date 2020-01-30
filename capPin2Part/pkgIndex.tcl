@@ -9,5 +9,6 @@
 # full path name of this file's directory.
 
 package ifneeded Pin2Part 1.0 [list source [file join $dir Pin2Part.tcl]]
+package ifneeded Pin2PartCfg 1.0 [list source [file join $dir Pin2PartCfg.tcl]]
 package ifneeded capPin2PartApp 1.0 [list source [file join $dir capPin2PartApp.tcl]]
 package ifneeded debug_log 1.0 [list source [file join $dir debug_log.tcl]]
