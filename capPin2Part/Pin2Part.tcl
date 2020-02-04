@@ -117,7 +117,6 @@ proc ::Pin2Part::ModifyNetOfPin {pWire pNet pAlteraNet} {
     # get the first alias of wire
     set lAlias [$lAliasIter NextAlias $lStatus]
     set lNullObj NULL
-    set lStatus [$pNet SetName [DboTclHelper_sMakeCString $pAlteraNet]]
     while {$lAlias!=$lNullObj} {
         # set pReplacedAliasCStr [DboTclHelper_sMakeCString $pAlteraNet]
         UnSelectAll
@@ -125,9 +124,7 @@ proc ::Pin2Part::ModifyNetOfPin {pWire pNet pAlteraNet} {
         SelectObjectById $ID
         SetProperty {Name} $pAlteraNet
         SetColor 4
-        SetFont "" 1864124768 FALSE TRUE
-        # set lStatus [$lAlias SetName $pReplacedAliasCStr]
-        # UnSelectAll
+        #SetFont "" 1864124768 FALSE TRUE
         # get the next alias of wire
         set lAlias [$lAliasIter NextAlias $lStatus]
     }
@@ -172,8 +169,8 @@ proc ::Pin2Part::Draw {reference} {
         set lSchematicName [DboTclHelper_sMakeCString]
         set lStatus [$lSchematic GetName $lSchematicName]
         set lSchematicNameStr [DboTclHelper_sGetConstCharPtr $lSchematicName]
-        wrlog " $lSchematicNameStr"
-        puts " $lSchematicNameStr"
+        wrlog "	$lSchematicNameStr"
+        puts "	$lSchematicNameStr"
         set lPagesIter [$lSchematic NewPagesIter $lStatus]
         # get the first page
         set lPage [$lPagesIter NextPage $lStatus]
@@ -181,8 +178,8 @@ proc ::Pin2Part::Draw {reference} {
             set lPageName [DboTclHelper_sMakeCString]
             set lStatus [$lPage GetName $lPageName]
             set lPageNameStr [DboTclHelper_sGetConstCharPtr $lPageName]
-            wrlog " $lPageNameStr"
-            puts " $lPageNameStr"
+            wrlog "		$lPageNameStr"
+            puts "		$lPageNameStr"
             set lPartInstsIter [$lPage NewPartInstsIter $lStatus]
             # get the first part inst
             set lInst [$lPartInstsIter NextPartInst $lStatus]
@@ -197,8 +194,8 @@ proc ::Pin2Part::Draw {reference} {
                     set lReferenceNameStr [DboTclHelper_sGetConstCharPtr $lReferenceName]
                     set lReferenceDesignatorStr [DboTclHelper_sGetConstCharPtr $lReferenceDesignator]
                     if {$lReferenceNameStr eq "DD3"} {
-                        puts " $lReferenceNameStr $lReferenceDesignatorStr"
-                        wrlog " $lReferenceNameStr $lReferenceDesignatorStr"
+                        puts "			$lReferenceNameStr $lReferenceDesignatorStr"
+                        wrlog "			$lReferenceNameStr $lReferenceDesignatorStr"
                         OPage $lSchematicNameStr $lPageNameStr
                         set lIter [$lPlacedInst NewPinsIter $lStatus]
                         # get the first pin of the part
@@ -220,29 +217,25 @@ proc ::Pin2Part::Draw {reference} {
                                         if {$pAlteraNet eq "NC"} {
                                             # delete wire
                                             ::Pin2Part::DeleteNetOfPin $lWire
-                                            puts " $lPinNumberStr $lNetNameStr delete"
-                                            wrlog " $lPinNumberStr $lNetNameStr delete"
+                                            puts "				$lPinNumberStr $lNetNameStr delete"
+                                            wrlog "				$lPinNumberStr $lNetNameStr delete"
                                         } else {
                                             ::Pin2Part::ModifyNetOfPin $lWire $lNet $pAlteraNet
-                                            # delete wire
-                                            # ::Pin2Part::DeleteNetOfPin $lWire
-                                            # ::Pin2Part::AddNetToPin $lPin $pAlteraNet
-                                            # set lStatus [$lNet SetName [DboTclHelper_sMakeCString $pAlteraNet]]
-                                            wrlog " $lPinNumberStr $pAlteraNet $lNetNameStr reuse"
-                                            puts " $lPinNumberStr $pAlteraNet $lNetNameStr reuse"
+                                            wrlog "				$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
+                                            puts "				$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
                                         }
                                     }
                                 } else {
-                                    wrlog " $lPinNumberStr $pAlteraNet $lNetNameStr OK"
-                                    puts " $lPinNumberStr $pAlteraNet $lNetNameStr OK"
+                                    wrlog "				$lPinNumberStr $pAlteraNet $lNetNameStr OK"
+                                    puts "				$lPinNumberStr $pAlteraNet $lNetNameStr OK"
                                 }
                             } elseif {$pAlteraNet ne "NC"} {
                                 # add wire & net
                                 ::Pin2Part::AddNetToPin $lPin $pAlteraNet
-                                puts " $lPinNumberStr $pAlteraNet add"
-                                wrlog " $lPinNumberStr $pAlteraNet add"
+                                puts "				$lPinNumberStr $pAlteraNet add"
+                                wrlog "				$lPinNumberStr $pAlteraNet add"
                             } else {
-                                puts " $lPinNumberStr NC"
+                                puts "				$lPinNumberStr NC"
                             }
                             # get the next pin of the part
                             set lPin [$lIter NextPin $lStatus]
