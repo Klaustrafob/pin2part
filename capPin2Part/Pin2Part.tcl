@@ -193,9 +193,9 @@ proc ::Pin2Part::Draw {reference} {
                     $lPlacedInst GetReferenceDesignator $lReferenceDesignator
                     set lReferenceNameStr [DboTclHelper_sGetConstCharPtr $lReferenceName]
                     set lReferenceDesignatorStr [DboTclHelper_sGetConstCharPtr $lReferenceDesignator]
-                    if {$lReferenceNameStr eq "DD3"} {
-                        puts "			$lReferenceNameStr $lReferenceDesignatorStr"
-                        wrlog "			$lReferenceNameStr $lReferenceDesignatorStr"
+                    if {$lReferenceNameStr eq $reference} {
+                        puts "			$reference $lReferenceNameStr $lReferenceDesignatorStr"
+                        wrlog "			$reference $lReferenceNameStr $lReferenceDesignatorStr"
                         OPage $lSchematicNameStr $lPageNameStr
                         set lIter [$lPlacedInst NewPinsIter $lStatus]
                         # get the first pin of the part
