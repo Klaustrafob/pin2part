@@ -19,7 +19,7 @@ proc ::Pin2Part::ReadPinFile {fname} {
     set AllteraPinFile [open  $AlteraPinFileName r]
     set AlteraNetlist  [read  $AllteraPinFile]
     set SplitNetlist   [split $AlteraNetlist "\n"]
-    set ::Pin2Part::SplitNetlist SplitNetlist
+    set ::Pin2Part::SplitNetlist $SplitNetlist
 }
 
 
