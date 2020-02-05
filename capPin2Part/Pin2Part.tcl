@@ -82,7 +82,7 @@ proc ::Pin2Part::GetAlteraNet {Netlist PinNumber} {
 
 proc ::Pin2Part::AddNetToPin {pPin pAlias} {
     set lStatus [DboState]
-    set lWireLength 12
+    set lWireLength 14.4
     # dependet of Page Grid Refrence
     set UnitFactor 0.12
 
@@ -102,9 +102,15 @@ proc ::Pin2Part::AddNetToPin {pPin pAlias} {
         if {$lHotSpotPointX > $lStartPointX} {
             PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX+$lWireLength] $lHotSpotPointY
             PlaceNetAlias [expr $lHotSpotPointX+3] $lHotSpotPointY $pAlias
+			UnSelectAll
+			SelectObject [expr $lHotSpotPointX+3] [expr $lHotSpotPointY-1] FALSE
+			SetColor 4
         } elseif {$lHotSpotPointX < $lStartPointX} {
             PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX-$lWireLength] $lHotSpotPointY
             PlaceNetAlias [expr $lHotSpotPointX-$lWireLength+1] $lHotSpotPointY $pAlias
+			UnSelectAll
+			SelectObject [expr $lHotSpotPointX-$lWireLength+1] [expr $lHotSpotPointY-1] FALSE
+			SetColor 4
         }
     }
     $lStatus -delete
@@ -194,8 +200,8 @@ proc ::Pin2Part::Draw {reference} {
                     set lReferenceNameStr [DboTclHelper_sGetConstCharPtr $lReferenceName]
                     set lReferenceDesignatorStr [DboTclHelper_sGetConstCharPtr $lReferenceDesignator]
                     if {$lReferenceNameStr eq $reference} {
-                        puts "			$reference $lReferenceNameStr $lReferenceDesignatorStr"
-                        wrlog "			$reference $lReferenceNameStr $lReferenceDesignatorStr"
+                        puts "			$reference $lReferenceDesignatorStr"
+                        wrlog "			$reference $lReferenceDesignatorStr"
                         OPage $lSchematicNameStr $lPageNameStr
                         set lIter [$lPlacedInst NewPinsIter $lStatus]
                         # get the first pin of the part
