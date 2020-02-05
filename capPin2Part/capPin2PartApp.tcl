@@ -44,6 +44,9 @@ proc ::capPin2PartApp::openPinFile {} {
 
 proc ::capPin2PartApp::Run {} {
     global label_status
+
+    ::capPin2PartApp::SetReference
+
     set fname $::capPin2PartApp::fname
     if [file exists $fname] {
         ::Pin2Part::ReadPinFile $::capPin2PartApp::fname
@@ -68,17 +71,11 @@ proc ::capPin2PartApp::Init {} {
 }
 
 
-proc ::capPin2PartApp::SetReference {ref} {
+proc ::capPin2PartApp::SetReference {} {
+    set ref [.eref_des get]
     set ::capPin2PartApp::reference $ref
     Pin2PartCfg::SetReference $ref
-    puts "*:set ref: $ref"
-    puts $ref
-}
 
-
-proc ::capPin2PartApp::SetRefButton {} {
-    set ref [.eref_des get]
-    Pin2PartCfg::SetReference $ref
     .eref_des delete 0 end
     .eref_des insert 0 $ref
 }
@@ -107,7 +104,7 @@ proc ::capPin2PartApp::GUI {pLib} {
     set entry_ref $ref
     entry .eref_des -textvariable entry_ref -width 10
     .eref_des insert 0 $ref
-    button .set_ref -text "Set reference" -command "::capPin2PartApp::SetRefButton" -width 15
+    button .set_ref -text "Set reference" -command "::capPin2PartApp::SetReference" -width 15
 
     button .run_pin -text "RUN" -command ::capPin2PartApp::Run -width 15
 
