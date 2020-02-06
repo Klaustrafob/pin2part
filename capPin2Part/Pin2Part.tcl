@@ -27,9 +27,11 @@ proc ::Pin2Part::ReadPinFile {fname} {
 	unset AlteraPinFileName AllteraPinFile AlteraNetlist SplitNetlist
 }
 
-
-proc ::Pin2Part::NetNameUni {pNetName pStandard} {
-    if {[expr {($pNetName eq "GXB_GND*") || ($pNetName eq "GND+")} || [regexp {GNDA+} $pNetName match]]} {
+proc ::Pin2Part::CustomNet {pNetName} {
+    if {[expr {	
+				($pNetName eq "GXB_GND*") ||
+				($pNetName eq "GND+") ||
+				[regexp {GNDA+} $pNetName match]}]} {
         return "GND"
     } elseif {[expr {
                      ($pNetName eq "") ||
@@ -42,7 +44,15 @@ proc ::Pin2Part::NetNameUni {pNetName pStandard} {
                      ($pNetName eq "GNDSENSE") ||
                      ($pNetName eq "VCCLSENSE")}]} {
         return "NC"
-    } elseif {[expr {($pStandard eq "LVDS") || ($pStandard eq "High Speed Differential I/O")}]} {
+	} else {
+		return $pNetName
+	}
+}
+
+
+proc ::Pin2Part::NetNameUni {pNetName pStandard} {
+	set pNetName [::Pin2Part::CustomNet $pNetName]
+	if {[expr {($pStandard eq "LVDS") || ($pStandard eq "High Speed Differential I/O")}]} {
         set Negativ [regexp {\(n\)+} $pNetName match]
         regsub -all -- {\(n\)} $pNetName {} pNetName
         if {$Negativ} {
@@ -108,13 +118,13 @@ proc ::Pin2Part::AddNetToPin {pPin pAlias} {
             PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX+$lWireLength] $lHotSpotPointY
             PlaceNetAlias [expr $lHotSpotPointX+3] $lHotSpotPointY $pAlias
 			UnSelectAll
-			SelectObject [expr $lHotSpotPointX+3] [expr $lHotSpotPointY-1] FALSE
+			SelectObject [expr $lHotSpotPointX+4] [expr $lHotSpotPointY-1] FALSE
 			SetColor 4
         } elseif {$lHotSpotPointX < $lStartPointX} {
             PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX-$lWireLength] $lHotSpotPointY
             PlaceNetAlias [expr $lHotSpotPointX-$lWireLength+3] $lHotSpotPointY $pAlias
 			UnSelectAll
-			SelectObject [expr $lHotSpotPointX-$lWireLength+3] [expr $lHotSpotPointY-1] FALSE
+			SelectObject [expr $lHotSpotPointX-$lWireLength+4] [expr $lHotSpotPointY-1] FALSE
 			SetColor 4
         }
     }
@@ -124,53 +134,70 @@ proc ::Pin2Part::AddNetToPin {pPin pAlias} {
 
 
 proc ::Pin2Part::ModifyNetOfPin {pWire pAlias} {
+	set lNullObj NULL
     set lStatus [DboState]
-    set lAliasIter [$pWire NewAliasesIter $lStatus]
-    # get the first alias of wire
-    set lAlias [$lAliasIter NextAlias $lStatus]
-    set lNullObj NULL
-	if {$lAlias==$lNullObj} {
-		set lStartPoint [$pWire GetStartPoint $lStatus]
-		set lStartPointX [expr [DboTclHelper_sGetCPointX $lStartPoint]* $::Pin2Part::UnitFactor]
-		set lStartPointY [expr [DboTclHelper_sGetCPointY $lStartPoint]* $::Pin2Part::UnitFactor]
-		#puts "Start: $lStartPointX , $lStartPointY"
+	set pWire [DboWireToDboWireScalar $pWire]
+	if {$pWire!=$lNullObj} {
+		set lAliasIter [$pWire NewAliasesIter $lStatus]
+		# get the first alias of wire
+		set lAlias [$lAliasIter NextAlias $lStatus]
+		if {$lAlias==$lNullObj} {
+			set lStartPoint [$pWire GetStartPoint $lStatus]
+			set lStartPointX [expr [DboTclHelper_sGetCPointX $lStartPoint]* $::Pin2Part::UnitFactor]
+			set lStartPointY [expr [DboTclHelper_sGetCPointY $lStartPoint]* $::Pin2Part::UnitFactor]
+			#puts "Start: $lStartPointX , $lStartPointY"
 
-		# Get endpoint coordinates
-		set lEndPoint [$pWire GetEndPoint $lStatus]
-		set lEndPointX [expr [DboTclHelper_sGetCPointX $lEndPoint]* $::Pin2Part::UnitFactor]
-		set lEndPointY [expr [DboTclHelper_sGetCPointY $lEndPoint]* $::Pin2Part::UnitFactor]
-		#puts "End: $lEndPointX , $lEndPointY"
-		
-		if {$lEndPointY == $lStartPointY} {
-			if {$lEndPointX > $lStartPointX} {
-				PlaceNetAlias [expr $lStartPointX] $lEndPointY $pAlias
-				UnSelectAll
-				SelectObject [expr $lStartPointX] [expr $lEndPointY-1] FALSE
-				SetColor 4
-			} elseif {$lEndPointX < $lStartPointX} {
-				PlaceNetAlias [expr $lEndPointX] $lEndPointY $pAlias
-				UnSelectAll
-				SelectObject [expr $lEndPointX] [expr $lEndPointY-1] FALSE
-				SetColor 4
-			}		
+			# Get endpoint coordinates
+			set lEndPoint [$pWire GetEndPoint $lStatus]
+			set lEndPointX [expr [DboTclHelper_sGetCPointX $lEndPoint]* $::Pin2Part::UnitFactor]
+			set lEndPointY [expr [DboTclHelper_sGetCPointY $lEndPoint]* $::Pin2Part::UnitFactor]
+			#puts "End: $lEndPointX , $lEndPointY"
+			
+			#set lEndPoint [DboTclHelper_sMakeCPoint 0 0]
+			#set lStartPoint [DboTclHelper_sMakeCPoint 0 0]
+			# set logfont [DboTclHelper_sMakeLOGFONT]
+			# set rotation $::DboValue_NOROTATION
+			# set color 4
+			if {$lEndPointY == $lStartPointY} {
+				if {$lEndPointX > $lStartPointX} {
+					PlaceNetAlias [expr $lStartPointX] $lEndPointY $pAlias
+					#set lAlias [$pWire NewAlias $lStatus "ThisAlias" $lStartPoint $logfont $rotation $color]
+					UnSelectAll
+					SelectObject [expr $lStartPointX+1] [expr $lEndPointY-1] FALSE
+					SetColor 4
+				} elseif {$lEndPointX < $lStartPointX} {
+					PlaceNetAlias [expr $lEndPointX] $lEndPointY $pAlias
+					#set lAlias [$pWire NewAlias $lStatus "ThisAlias" $lEndPoint $logfont $rotation $color]
+					UnSelectAll
+					SelectObject [expr $lEndPointX+1] [expr $lEndPointY-1] FALSE
+					SetColor 4
+				}		
+			}
+			unset lAlias lEndPointY lEndPointX lEndPoint lStartPointY lStartPointX lStartPoint
+			delete_DboWireAliasesIter $lAliasIter
+			$lStatus -delete
+			return
 		}
+		
+		#delete_DboWireAliasesIter $lAliasIter
+		#unset lAlias
+		#set lAliasIter [$pWire NewAliasesIter $lStatus]
+		# get the first alias of wire
+		#set lAlias [$lAliasIter NextAlias $lStatus]	
+		while {$lAlias!=$lNullObj} {
+			UnSelectAll
+			set ID [$lAlias GetId $lStatus]
+			SelectObjectById $ID
+			SetProperty {Name} $pAlias
+			SetColor 4
+			unset ID
+			# get the next alias of wire
+			set lAlias [$lAliasIter NextAlias $lStatus]
+		}
+		unset lAlias
 		delete_DboWireAliasesIter $lAliasIter
-		unset lAlias lEndPointY lEndPointX lEndPoint lStartPointY lStartPointX lStartPoint lNullObj
-		$lStatus -delete		
-		return
 	}
-	
-    while {$lAlias!=$lNullObj} {
-        UnSelectAll
-        set ID [$lAlias GetId $lStatus]
-        SelectObjectById $ID
-        SetProperty {Name} $pAlias
-        SetColor 4
-        # get the next alias of wire
-        set lAlias [$lAliasIter NextAlias $lStatus]
-    }
-	unset lAlias ID lNullObj
-    delete_DboWireAliasesIter $lAliasIter
+	unset lNullObj
     $lStatus -delete
 }
 
@@ -203,9 +230,9 @@ proc ::Pin2Part::Draw {reference} {
     wrlog $lDesignNameStr
     puts $lDesignNameStr
 
-    set lSchematicIter [$lDesign NewViewsIter $lStatus]
+    set lSchematicIter [$lDesign NewViewsIter $lStatus $::IterDefs_SCHEMATICS]
     # get the first schematic view
-    set lView [$lSchematicIter NextView $lStatus $::IterDefs_SCHEMATICS]
+    set lView [$lSchematicIter NextView $lStatus]
     while {$lView != $lNullObj} {
         # dynamic cast from DboView to DboSchematic
         set lSchematic [DboViewToDboSchematic $lView]
@@ -254,32 +281,32 @@ proc ::Pin2Part::Draw {reference} {
                                 set lNetName [DboTclHelper_sMakeCString]
                                 set lStatus [$lNet GetNetName $lNetName]
                                 set lNetNameStr [DboTclHelper_sGetConstCharPtr $lNetName]
-                                if {[string toupper $pAlteraNet] ne $lNetNameStr} {
+                                if {[string toupper $pAlteraNet] ne [string toupper $lNetNameStr]} {
                                     set lWire [$lPin GetWire $lStatus]
                                     if {$lWire != $lNullObj} {
                                         if {$pAlteraNet eq "NC"} {
                                             # delete wire
                                             ::Pin2Part::DeleteNetOfPin $lWire
-											set lStatus [$lPage MarkModified]
+											DboTclHelper_sEvalPage $lPage
                                             puts "				$lPinNumberStr $lNetNameStr delete"
                                             wrlog "				$lPinNumberStr $lNetNameStr delete"
                                         } else {
                                             ::Pin2Part::ModifyNetOfPin $lWire $pAlteraNet
-											set lStatus [$lPage MarkModified]
+											DboTclHelper_sEvalPage $lPage
                                             wrlog "				$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
                                             puts "				$lPinNumberStr $pAlteraNet $lNetNameStr reuse"
                                         }
 										unset lWire
                                     }
                                 } else {
-                                    wrlog "				$lPinNumberStr $pAlteraNet $lNetNameStr OK"
-                                    puts "				$lPinNumberStr $pAlteraNet $lNetNameStr OK"
+                                    wrlog "				$lPinNumberStr $pAlteraNet $lNetNameStr match"
+                                    puts "				$lPinNumberStr $pAlteraNet $lNetNameStr match"
                                 }
 								unset lNetNameStr lNetName
                             } elseif {$pAlteraNet ne "NC"} {
                                 # add wire & net
                                 ::Pin2Part::AddNetToPin $lPin $pAlteraNet
-								set lStatus [$lPage MarkModified]
+								DboTclHelper_sEvalPage $lPage
                                 puts "				$lPinNumberStr $pAlteraNet add"
                                 wrlog "				$lPinNumberStr $pAlteraNet add"
                             } else {
@@ -299,11 +326,6 @@ proc ::Pin2Part::Draw {reference} {
             }
 			unset lInst lPageNameStr lPageName
             delete_DboPagePartInstsIter $lPartInstsIter
-			set lIsPageModified [$lPage IsModified $lStatus]
-			if { $lIsPageModified == 1 } {
-				catch {DboTclHelper_sEvalPage $lPage}
-			}
-			unset lIsPageModified
             set lPage [$lPagesIter NextPage $lStatus]
         }
 		unset lPage lSchematicNameStr lSchematicName lSchematic
