@@ -45,7 +45,7 @@ proc ::Pin2Part::CustomNet {pNetName} {
                      ($pNetName eq {VCCLSENSE})}]} {
         return {NC}
 	} elseif {$pNetName eq {AS_DATA0, ASDO}} {
-		return {AS_DATA0}
+		return {ASDO}
 	} else {
 		return $pNetName
 	}
@@ -69,6 +69,7 @@ proc ::Pin2Part::NetNameUni {pNetName pStandard} {
         if {$IsVector!=0} {
             set pos [string last "\[" $pNetName]
             set pNetName [string replace $pNetName $pos $pos $Polarity]
+			regsub -all -- {\[} $pNetName {} pNetName
 			unset pos
         } else {
             set pNetName "$pNetName$Polarity"
@@ -81,7 +82,7 @@ proc ::Pin2Part::NetNameUni {pNetName pStandard} {
         regsub -all -- {\)} $pNetName {} pNetName
         regsub -all -- {\(} $pNetName {} pNetName
     }
-	regsub -all -- {\.} $pNetName {_} pNetName
+	#regsub -all -- {\.} $pNetName {_} pNetName
     return $pNetName
 }
 
