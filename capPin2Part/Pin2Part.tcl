@@ -46,6 +46,14 @@ proc ::Pin2Part::CustomNet {pNetName} {
         return {NC}
 	} elseif {$pNetName eq {AS_DATA0, ASDO}} {
 		return {ASDO}
+	} elseif {$pNetName eq {altera_reserved_tdo}} {
+		return {TDO}
+	} elseif {$pNetName eq {altera_reserved_tdi}} {
+		return {TDI}
+	} elseif {$pNetName eq {altera_reserved_tck}} {
+		return {TCK}
+	} elseif {$pNetName eq {altera_reserved_tms}} {
+		return {TMS}
 	} else {
 		return $pNetName
 	}
