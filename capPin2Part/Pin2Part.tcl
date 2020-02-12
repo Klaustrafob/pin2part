@@ -63,7 +63,10 @@ proc ::Pin2Part::CustomNet {pNetName} {
 
 proc ::Pin2Part::NetNameUni {pNetName pStandard} {
 	set pNetName [::Pin2Part::CustomNet $pNetName]
-	if {[expr {($pStandard eq "LVDS") || ($pStandard eq "High Speed Differential I/O")}]} {
+	if {[expr { ($pStandard eq "LVDS") || 
+				($pStandard eq "Differential 1.35-V SSTL") ||  
+				($pStandard eq "High Speed Differential I/O")}]} {
+				
         set Negativ [regexp {\(n\)+} $pNetName match]
         regsub -all -- {\(n\)} $pNetName {} pNetName
         if {$Negativ} {
