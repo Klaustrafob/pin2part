@@ -67,8 +67,14 @@ proc ::Pin2Part::NetNameUni {pNetName pStandard} {
 				($pStandard eq "Differential 1.35-V SSTL") ||  
 				($pStandard eq "High Speed Differential I/O")}]} {
 				
-        set Negativ [regexp {\(n\)+} $pNetName match]
-        regsub -all -- {\(n\)} $pNetName {} pNetName
+		if {$pStandard eq "Differential 1.35-V SSTL"} {
+			set Negativ [regexp {_n+} $pNetName match]
+			regsub -all -- {_n} $pNetName {} pNetName
+		} else {
+			set Negativ [regexp {\(n\)+} $pNetName match]
+			regsub -all -- {\(n\)} $pNetName {} pNetName
+		}
+        
         if {$Negativ} {
             set Polarity "n"
         } else {
@@ -76,13 +82,10 @@ proc ::Pin2Part::NetNameUni {pNetName pStandard} {
         }
 
 		set EndSymbol [string index $pNetName end]
-        #set IsVector [regexp {\[+} $pNetName match]
-        #regsub -all -- {\]} $pNetName {} pNetName
         set pNetName [string toupper $pNetName]
         if {$EndSymbol eq "\]"} {
             set pos [string last "\[" $pNetName]
             set pNetName [string replace $pNetName $pos $pos $Polarity]
-			#regsub -all -- {\[} $pNetName {} pNetName
 			unset pos
         } else {
             set pNetName "$pNetName$Polarity"
