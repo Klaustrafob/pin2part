@@ -42,6 +42,7 @@ proc ::Pin2Part::CustomNet {pNetName} {
                      ($pNetName eq {~ALTERA_CLKUSR~ / RESERVED_INPUT}) ||
                      ($pNetName eq {~ALTERA_nCEO~ / RESERVED_OUTPUT_OPEN_DRAIN}) ||
                      ($pNetName eq {GNDSENSE}) ||
+					 ($pNetName eq {NIO_PULLUP}) ||
                      ($pNetName eq {VCCLSENSE})}]} {
         return {NC}
 	} elseif {$pNetName eq {AS_DATA0, ASDO}} {
@@ -71,25 +72,26 @@ proc ::Pin2Part::NetNameUni {pNetName pStandard} {
             set Polarity "p"
         }
 
-        set IsVector [regexp {\[+} $pNetName match]
-        regsub -all -- {\]} $pNetName {} pNetName
+		set EndSymbol [string index $pNetName end]
+        #set IsVector [regexp {\[+} $pNetName match]
+        #regsub -all -- {\]} $pNetName {} pNetName
         set pNetName [string toupper $pNetName]
-        if {$IsVector!=0} {
+        if {$EndSymbol eq "\]"} {
             set pos [string last "\[" $pNetName]
             set pNetName [string replace $pNetName $pos $pos $Polarity]
-			regsub -all -- {\[} $pNetName {} pNetName
+			#regsub -all -- {\[} $pNetName {} pNetName
 			unset pos
         } else {
             set pNetName "$pNetName$Polarity"
         }
-		unset Negativ Polarity IsVector
+		unset Negativ Polarity EndSymbol
     } else {
         set pNetName [string toupper $pNetName]
-        regsub -all -- {\]} $pNetName {} pNetName
-        regsub -all -- {\[} $pNetName {} pNetName
-        regsub -all -- {\)} $pNetName {} pNetName
-        regsub -all -- {\(} $pNetName {} pNetName
     }
+	regsub -all -- {\]} $pNetName {} pNetName
+    regsub -all -- {\[} $pNetName {} pNetName
+    regsub -all -- {\)} $pNetName {} pNetName
+    regsub -all -- {\(} $pNetName {} pNetName
 	regsub -all -- {\.} $pNetName {_} pNetName
     return $pNetName
 }
