@@ -50,7 +50,7 @@ proc ::capPin2PartApp::Run {} {
     set fname $::capPin2PartApp::fname
     if [file exists $fname] {
         ::Pin2Part::ReadPinFile $::capPin2PartApp::fname
-        ::Pin2Part::Draw $::capPin2PartApp::reference
+        ::Pin2Part::Main $::capPin2PartApp::reference
         set label_status "Done"
     } else {
         set label_status "ERROR! Can't find file: $fname"
