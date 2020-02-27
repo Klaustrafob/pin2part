@@ -1,4 +1,5 @@
 package require debug_log
+package require Pin2PartRename
 
 package provide Pin2Part 1.0
 
@@ -58,6 +59,10 @@ proc ::Pin2Part::CustomNet {pNetName} {
 	} else {
 		set pNetName $pNetName
 	}
+    if {[::Pin2PartRename::ExistInMask $pNetName] == 1} {
+        set new_name [::Pin2PartRename::GetNewName $pNetName]
+		set pNetName $new_name
+    }
     return $pNetName
 }
 
@@ -222,6 +227,7 @@ proc ::Pin2Part::Main {reference} {
     set lDesignNameStr [DboTclHelper_sGetConstCharPtr $lDesignName]
     wrlog $lDesignNameStr
     puts $lDesignNameStr
+    ::Pin2PartRename::ReadMask2Rename $lDesignNameStr
 
     set lSchematicIter [$lDesign NewViewsIter $lStatus $::IterDefs_SCHEMATICS]
     # get the first schematic view
