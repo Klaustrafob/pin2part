@@ -1,4 +1,5 @@
 package require debug_log
+package require Pin2PartRename
 
 package provide Pin2Part 1.0
 
@@ -28,11 +29,11 @@ proc ::Pin2Part::ReadPinFile {fname} {
 }
 
 proc ::Pin2Part::CustomNet {pNetName} {
-    if {[expr {	
-				($pNetName eq {GXB_GND*}) ||
-				($pNetName eq {GND+}) ||
-				[regexp {GNDA+} $pNetName match]}]} {
-        return {GND}
+    if {[expr {
+               ($pNetName eq {GXB_GND*}) ||
+               ($pNetName eq {GND+}) ||
+               [regexp {GNDA+} $pNetName match]}]} {
+        set pNetName {GND}
     } elseif {[expr {
                      ($pNetName eq {}) ||
                      ($pNetName eq {DNU}) ||
@@ -44,20 +45,25 @@ proc ::Pin2Part::CustomNet {pNetName} {
                      ($pNetName eq {GNDSENSE}) ||
 					 ($pNetName eq {NIO_PULLUP}) ||
                      ($pNetName eq {VCCLSENSE})}]} {
-        return {NC}
+        set pNetName {NC}
 	} elseif {$pNetName eq {AS_DATA0, ASDO}} {
-		return {ASDO}
+		set pNetName {ASDO}
 	} elseif {$pNetName eq {altera_reserved_tdo}} {
-		return {TDO}
+		set pNetName {TDO}
 	} elseif {$pNetName eq {altera_reserved_tdi}} {
-		return {TDI}
+		set pNetName {TDI}
 	} elseif {$pNetName eq {altera_reserved_tck}} {
-		return {TCK}
+		set pNetName {TCK}
 	} elseif {$pNetName eq {altera_reserved_tms}} {
-		return {TMS}
+		set pNetName {TMS}
 	} else {
-		return $pNetName
+		set pNetName $pNetName
 	}
+    if {[::Pin2PartRename::ExistInMask $pNetName] == 1} {
+        set new_name [::Pin2PartRename::GetNewName $pNetName]
+		set pNetName $new_name
+    }
+    return $pNetName
 }
 
 
@@ -222,6 +228,7 @@ proc ::Pin2Part::Main {reference} {
     set lDesignNameStr [DboTclHelper_sGetConstCharPtr $lDesignName]
     wrlog $lDesignNameStr
     puts $lDesignNameStr
+    ::Pin2PartRename::ReadMask2Rename $lDesignNameStr
 
     set lSchematicIter [$lDesign NewViewsIter $lStatus $::IterDefs_SCHEMATICS]
     # get the first schematic view
