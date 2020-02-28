@@ -29,36 +29,6 @@ proc ::Pin2Part::ReadPinFile {fname} {
 }
 
 proc ::Pin2Part::CustomNet {pNetName} {
-    if {[expr {
-               ($pNetName eq {GXB_GND*}) ||
-               ($pNetName eq {GND+}) ||
-               [regexp {GNDA+} $pNetName match]}]} {
-        set pNetName {GND}
-    } elseif {[expr {
-                     ($pNetName eq {}) ||
-                     ($pNetName eq {DNU}) ||
-                     ($pNetName eq {RESERVED_INPUT_WITH_WEAK_PULLUP}) ||
-                     ($pNetName eq {GXB_NC})  ||
-                     ($pNetName eq {~ALTERA_DATA0~ / RESERVED_INPUT}) ||
-                     ($pNetName eq {~ALTERA_CLKUSR~ / RESERVED_INPUT}) ||
-                     ($pNetName eq {~ALTERA_nCEO~ / RESERVED_OUTPUT_OPEN_DRAIN}) ||
-                     ($pNetName eq {GNDSENSE}) ||
-					 ($pNetName eq {NIO_PULLUP}) ||
-                     ($pNetName eq {VCCLSENSE})}]} {
-        set pNetName {NC}
-	} elseif {$pNetName eq {AS_DATA0, ASDO}} {
-		set pNetName {ASDO}
-	} elseif {$pNetName eq {altera_reserved_tdo}} {
-		set pNetName {TDO}
-	} elseif {$pNetName eq {altera_reserved_tdi}} {
-		set pNetName {TDI}
-	} elseif {$pNetName eq {altera_reserved_tck}} {
-		set pNetName {TCK}
-	} elseif {$pNetName eq {altera_reserved_tms}} {
-		set pNetName {TMS}
-	} else {
-		set pNetName $pNetName
-	}
     if {[::Pin2PartRename::ExistInMask $pNetName] == 1} {
         set new_name [::Pin2PartRename::GetNewName $pNetName]
 		set pNetName $new_name

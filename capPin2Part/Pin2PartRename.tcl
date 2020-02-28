@@ -34,13 +34,13 @@ proc ::Pin2PartRename::ReadMask2Rename {fname} {
         close $fp
 
         foreach line $lines {
-            set line [string trim $line " "]
+            #set line [string trim $line]
             # if the first char is '#' - skip this line(line is commented)
             set first_char [string range $line 0 0]
             if {$first_char != "#" } {
                 set line [split $line ":"]
-                set old_name [string trim [lindex $line 0] " "]
-                set new_name [string trim [lindex $line 1] " "]
+                set old_name [string trim [lindex $line 0]]
+                set new_name [string trim [lindex $line 1]]
                 if {$old_name != ""} {
                     lappend ::Pin2PartRename::old_name $old_name
                     lappend ::Pin2PartRename::new_name $new_name
@@ -85,6 +85,6 @@ proc ::Pin2PartRename::ExistInMask {name} {
 proc ::Pin2PartRename::GetNewName {name} {
     set id [lsearch -exact $::Pin2PartRename::old_name "$name"]
     set new_name [lindex $::Pin2PartRename::new_name $id]
-    puts " RENAMING: '$name' to '$new_name'"
+    puts "					RENAMING: '$name' to '$new_name'"
     return $new_name
 }
