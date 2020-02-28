@@ -117,7 +117,7 @@ proc ::Pin2Part::GetAlteraNet {Netlist PinNumber} {
 }
 
 
-proc ::Pin2Part::AddNetToPin {pPin pAlias Color} {
+proc ::Pin2Part::AddNetToPin {pPin pAlias} {
     set lStatus [DboState]
     set lWireLength [expr 1.2*11]
     # Get starting coordinates
@@ -133,41 +133,44 @@ proc ::Pin2Part::AddNetToPin {pPin pAlias Color} {
     # puts "HotSpotPointY: $lHotSpotPointX , $lHotSpotPointY"
 
 	if {$lHotSpotPointX > $lStartPointX} {
-		if { [catch {PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX+$lWireLength] $lHotSpotPointY} lResult] } {
-			return $lResult
-		}
-		if { [catch {PlaceNetAlias [expr $lHotSpotPointX+3] $lHotSpotPointY "pAlias"} lResult] } {
-			return $lResult
-		}
+		PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX+$lWireLength] $lHotSpotPointY
+		PlaceNetAlias [expr $lHotSpotPointX+3] $lHotSpotPointY $pAlias
 	} else {
-		if { [catch {PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX-$lWireLength] $lHotSpotPointY} lResult] } {
-			return $lResult
-		}
-		if { [catch {PlaceNetAlias [expr $lHotSpotPointX-$lWireLength] $lHotSpotPointY "pAlias"} lResult] } {
-			return $lResult
-		}
+		PlaceWire $lHotSpotPointX $lHotSpotPointY [expr $lHotSpotPointX-$lWireLength] $lHotSpotPointY
+		PlaceNetAlias [expr $lHotSpotPointX-$lWireLength] $lHotSpotPointY $pAlias
 	}
 	set lWire [$pPin GetWire $lStatus]
 	if {$lWire != {NULL}} {
-		::Pin2Part::ModifyNetOfPin $lWire $pAlias $Color
+		set lAliasIter [$lWire NewAliasesIter $lStatus]
+		# get the first alias of wire
+		set lAlias [$lAliasIter NextAlias $lStatus]
+		while {$lAlias!={NULL}} {
+			UnSelectAll
+			set ID [$lAlias GetId $lStatus]
+			SelectObjectById $ID
+			SetColor 2
+			UnSelectAll
+			unset ID
+			# get the next alias of wire
+			set lAlias [$lAliasIter NextAlias $lStatus]
+		}
+		unset lAlias
+		delete_DboWireAliasesIter $lAliasIter
 	}
-	unset lWire
-
-	unset lWireLength lStartPoint lStartPointX lStartPointY lHotSpotPoint lHotSpotPointX lHotSpotPointY
+	unset lWire lWireLength lStartPoint lStartPointX lStartPointY lHotSpotPoint lHotSpotPointX lHotSpotPointY
     $lStatus -delete
 	return 0
 }
 
 
-proc ::Pin2Part::ModifyNetOfPin {pWire pAlias Color} {
+proc ::Pin2Part::ModifyNetOfPin {pWire pAlias} {
     set lStatus [DboState]
-	set pWire [DboWireToDboWireScalar $pWire]
 	if {$pWire!={NULL}} {
 		set lAliasIter [$pWire NewAliasesIter $lStatus]
 		# get the first alias of wire
 		set lAlias [$lAliasIter NextAlias $lStatus]
 		if {$lAlias=={NULL}} {
-			set lStatus [$pWire SetColor $Color]
+			set lStatus [$pWire SetColor 4]
 			unset lAlias
 			delete_DboWireAliasesIter $lAliasIter
 			$lStatus -delete
@@ -179,7 +182,7 @@ proc ::Pin2Part::ModifyNetOfPin {pWire pAlias Color} {
 			set ID [$lAlias GetId $lStatus]
 			SelectObjectById $ID
 			SetProperty {Name} $pAlias
-			SetColor $Color
+			SetColor 4
 			UnSelectAll
 			unset ID
 			# get the next alias of wire
@@ -206,8 +209,6 @@ proc ::Pin2Part::DeleteNetOfPin {pWire} {
 
 proc ::Pin2Part::Main {reference} {
     set lStatus [DboState]
-    set AddColor 2
-	set ModifyColor 4
     set lSession $::DboSession_s_pDboSession
     DboSession -this $lSession
     set lDesign [$lSession GetActiveDesign]
@@ -283,7 +284,7 @@ proc ::Pin2Part::Main {reference} {
                                             wrlog "				$lPinNumberStr $lNetNameStr delete"
                                         } else {
 											# modify net
-											set lResult [Pin2Part::ModifyNetOfPin $lWire $pAlteraNet $ModifyColor]
+											set lResult [Pin2Part::ModifyNetOfPin $lWire $pAlteraNet]
                                             wrlog "				$lPinNumberStr $pAlteraNet $lNetNameStr $lResult"
                                             puts "				$lPinNumberStr $pAlteraNet $lNetNameStr $lResult"
                                         }
@@ -296,7 +297,7 @@ proc ::Pin2Part::Main {reference} {
 								unset lNetNameStr lNetName
                             } elseif {$pAlteraNet ne "NC"} {
                                 # add wire & net
-                                ::Pin2Part::AddNetToPin $lPin $pAlteraNet $AddColor
+                                ::Pin2Part::AddNetToPin $lPin $pAlteraNet
                                 puts "				$lPinNumberStr $pAlteraNet add"
                                 wrlog "				$lPinNumberStr $pAlteraNet add"
                             } else {
